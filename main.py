@@ -5,6 +5,8 @@ from PIL import Image
 from frames.home_frame import HomeFrame
 from frames.inventory_frame import InventoryFrame
 from frames.admin_panel_frame import AdminPanelFrame
+from frames.shopping_cart_frame import ShoppingFrame
+from frames.expenses_frame import ExpensesFrame
 
 class App(ctk.CTk):
     def __init__(self):
@@ -26,10 +28,14 @@ class App(ctk.CTk):
 
         self.admin_image = ctk.CTkImage(dark_image=Image.open(os.path.join(image_path, "admin_panel_dark.png")), light_image=Image.open(os.path.join(image_path, "admin_panel_light.png")))
 
+        self.shopping_image = ctk.CTkImage(dark_image=Image.open(os.path.join(image_path, "shopping_bag_dark.png")), light_image=Image.open(os.path.join(image_path, "shopping_bag_light.png")))
+
+        self.expenses_image = ctk.CTkImage(dark_image=Image.open(os.path.join(image_path, "paid_dark.png")), light_image=Image.open(os.path.join(image_path, "paid_light.png")))
+
         # Botões de navegação
         self.navigation_frame = ctk.CTkFrame(self, corner_radius=0)
         self.navigation_frame.grid(row=0, column=0, sticky="nsew")
-        self.navigation_frame.grid_rowconfigure(4, weight=1)
+        self.navigation_frame.grid_rowconfigure(6, weight=1)
 
         # GRID COM LOGO
         self.nav_frame_label = ctk.CTkLabel(self.navigation_frame, text="Gestão De Estoque", image=self.logo_image, compound="left", font=ctk.CTkFont(size=15, weight="bold"))
@@ -44,6 +50,12 @@ class App(ctk.CTk):
         self.admin_panel_button = ctk.CTkButton(self.navigation_frame, corner_radius=0, height=40, border_spacing=10, text="admin_panel", fg_color="transparent", text_color=("gray10", "gray90"), hover_color=("gray70", "gray30"), image=self.admin_image, anchor="w", command=self.admin_panel_button_event)
         self.admin_panel_button.grid(row=3, column=0, sticky="ew")
 
+        self.shopping_cart_button = ctk.CTkButton(self.navigation_frame, corner_radius=0, height=40, border_spacing=10, text="shopping_panel", fg_color="transparent", text_color=("gray10", "gray90"), hover_color=("gray70", "gray30"), image=self.shopping_image, anchor="w", command=self.shopping_button_event)
+        self.shopping_cart_button.grid(row=4, column=0, sticky="ew")
+
+        self.expenses_button = ctk.CTkButton(self.navigation_frame, corner_radius=0, height=40, border_spacing=10, text="expenses_panel", fg_color="transparent", text_color=("gray10", "gray90"), hover_color=("gray70", "gray30"), image=self.expenses_image, anchor="w", command=self.expenses_event)
+        self.expenses_button.grid(row=5, column=0, sticky="ew")
+
         # TEMAS
         self.appearance_mode_menu = ctk.CTkOptionMenu(self.navigation_frame, values=["Light", "Dark", "System"], command=self.change_appearance_mode_event)
         self.appearance_mode_menu.grid(row=6, column=0, pady=20, padx=20, sticky="s")
@@ -52,11 +64,13 @@ class App(ctk.CTk):
         self.home_frame = HomeFrame(self, corner_radius=0, fg_color="transparent")
         self.inventory_frame = InventoryFrame(self, corner_radius=0, fg_color="transparent")
         self.admin_panel_frame = AdminPanelFrame(self, corner_radius=0, fg_color="transparent")
+        self.shopping_cart_frame = ShoppingFrame(self, corner_radius=0, fg_color="transparent")
+        self.expenses_frame = ExpensesFrame(self, corner_radius=0, fg_color="transparent")
 
         # WIDGETS FRAMES
         self.select_frame_by_name("home")
 
-        # Mostrar a tela de login antes da tela principal
+        # Exibir tela de login após inicializar a interface principal
         self.show_login_screen()
 
     def show_login_screen(self):
@@ -64,25 +78,36 @@ class App(ctk.CTk):
         self.login_frame.grid(row=0, column=0, sticky="nsew")
 
     def select_frame_by_name(self, name):
-        self.home_frame.grid_forget()
-        self.inventory_frame.grid_forget()
-        self.admin_panel_frame.grid_forget()
+        # Dicionário que mapeia os nomes das frames aos seus respectivos botões
+        frames = {
+            "home": self.home_frame,
+            "inventory": self.inventory_frame,
+            "admin_panel": self.admin_panel_frame,
+            "shopping_panel": self.shopping_cart_frame,
+            "expenses_panel": self.expenses_frame
+        }
 
-        if name == "home":
-            self.home_frame.grid(row=0, column=1, sticky="nsew")
-            self.home_button.configure(fg_color=("gray75", "gray25"))
-            self.inventory_button.configure(fg_color="transparent")
-            self.admin_panel_button.configure(fg_color="transparent")
-        elif name == "inventory":
-            self.inventory_frame.grid(row=0, column=1, sticky="nsew")
-            self.home_button.configure(fg_color="transparent")
-            self.inventory_button.configure(fg_color=("gray75", "gray25"))
-            self.admin_panel_button.configure(fg_color="transparent")
-        elif name == "admin_panel":
-            self.admin_panel_frame.grid(row=0, column=1, sticky="nsew")
-            self.home_button.configure(fg_color="transparent")
-            self.inventory_button.configure(fg_color="transparent")
-            self.admin_panel_button.configure(fg_color=("gray75", "gray25"))
+        buttons = {
+            "home": self.home_button,
+            "inventory": self.inventory_button,
+            "admin_panel": self.admin_panel_button,
+            "shopping_panel": self.shopping_cart_button,
+            "expenses_panel": self.expenses_frame
+        }
+
+        # Esconde todas as frames
+        for frame in frames.values():
+            frame.grid_forget()
+
+        # Torna visível a frame correspondente ao nome
+        frames.get(name).grid(row=0, column=1, sticky="nsew")
+
+        # Altera a cor do botão de acordo com a seleção
+        for button_name, button in buttons.items():
+            if button_name == name:
+                button.configure(fg_color=("gray75", "gray25"))
+            else:
+                button.configure(fg_color="transparent")
 
     def admin_panel_button_event(self):
         self.select_frame_by_name("admin_panel")
@@ -92,9 +117,16 @@ class App(ctk.CTk):
 
     def inventory_button_event(self):
         self.select_frame_by_name("inventory")
-        
-    def change_appearance_mode_event(self, new_appearence_mode):
-        ctk.set_appearance_mode(new_appearence_mode)
+
+    def shopping_button_event(self):
+        self.select_frame_by_name("shopping_panel")
+
+    def expenses_event(self):
+        self.select_frame_by_name("expenses_panel")
+
+    def change_appearance_mode_event(self, new_appearance_mode):
+        ctk.set_appearance_mode(new_appearance_mode)
+
 
 
     

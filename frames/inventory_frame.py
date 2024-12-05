@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import tkinter.messagebox as messagebox
 import sqlite3
+from tkinter import ttk
 
 
 class InventoryFrame(ctk.CTkFrame):
@@ -50,8 +51,26 @@ class InventoryFrame(ctk.CTkFrame):
         self.search_button = ctk.CTkButton(self.right_frame, text="Pesquisar", command=self.search_product)
         self.search_button.pack(padx=20, pady=5)
 
-        self.products_table = ctk.CTkTextbox(self.right_frame, width=500, height=200)
-        self.products_table.pack(padx=20, pady=20)
+        # Criando a tabela usando Treeview
+        self.products_table = ttk.Treeview(self.right_frame, columns=("ID", "CODIGO", "Nome", "Preço", "Estoque", "Marca", "Tipo"), show="headings")
+        self.products_table.pack(padx=20, pady=20, fill="both", expand=True)
+        
+        # Configurando as colunas
+        self.products_table.heading("ID", text="ID")
+        self.products_table.heading("CODIGO", text="CODIGO")
+        self.products_table.heading("Nome", text="Nome")
+        self.products_table.heading("Preço", text="Preço")
+        self.products_table.heading("Estoque", text="Estoque")
+        self.products_table.heading("Marca", text="Marca")
+        self.products_table.heading("Tipo", text="Tipo")
+
+        self.products_table.column("ID", width=25, anchor="center")
+        self.products_table.column("CODIGO", width=70, anchor="center")
+        self.products_table.column("Nome", width=180, anchor="w")
+        self.products_table.column("Preço", width=90, anchor="e")
+        self.products_table.column("Estoque", width=90, anchor="center")
+        self.products_table.column("Marca", width=100, anchor="w")
+        self.products_table.column("Tipo", width=100, anchor="w")
 
         self.init_database()
 
@@ -145,11 +164,9 @@ class InventoryFrame(ctk.CTkFrame):
         brand = self.brand_entry.get()
         product_type = self.product_type_entry.get()
 
-
         if not all([name, code, quantity, sale_price, purchase_price, brand, product_type]):
             messagebox.showwarning("Atenção", "Preencha todos os campos!")
             return
-
 
         try:
             conn = sqlite3.connect("products.db")
@@ -163,7 +180,7 @@ class InventoryFrame(ctk.CTkFrame):
             conn.commit()
             conn.close()
 
-            messagebox.showinfo("Sucesso", "Usuário cadastrado com sucesso!")
+            messagebox.showinfo("Sucesso", "Produto cadastrado com sucesso!")
             self.clear_form()
 
         except sqlite3.Error as e:
@@ -174,7 +191,7 @@ class InventoryFrame(ctk.CTkFrame):
         search_query = self.search_entry.get()
 
         if not search_query:
-            ctk.CTkMessagebox.show_warning("Atenção", "Digite o nome ou código do produto para pesquisar.")
+            messagebox.showwarning("Atenção", "Digite o nome ou código do produto para pesquisar.")
             return
 
         try:
@@ -182,26 +199,26 @@ class InventoryFrame(ctk.CTkFrame):
             cursor = conn.cursor()
 
             cursor.execute('''
-            SELECT name, code, quantity, sale_price, purchase_price, brand, product_type FROM products
+            SELECT id, code, name, sale_price, quantity, brand, product_type FROM products
             WHERE name LIKE ? OR code LIKE ?
             ''', ('%' + search_query + '%', '%' + search_query + '%'))
 
             products = cursor.fetchall()
             conn.close()
 
-            if products:
-                result_text = "Nome | Código | Quantidade | Preço Venda | Preço Compra | Marca | Tipo\n"
-                result_text += "-" * 80 + "\n"
-                for product in products:
-                    result_text += " | ".join(map(str, product)) + "\n"
-                self.products_table.delete(1.0, ctk.END)
-                self.products_table.insert(ctk.END, result_text)
-            else:
-                self.products_table.delete(1.0, ctk.END)
-                self.products_table.insert(ctk.END, "Nenhum produto encontrado.")
+            # Limpar os dados atuais da tabela
+            for row in self.products_table.get_children():
+                self.products_table.delete(row)
 
-        except Exception as e:
-            ctk.CTkMessagebox.show_error("Erro", f"Erro ao buscar produtos: {e}")
+            # Inserir os resultados no Treeview
+            if products:
+                for product in products:
+                    self.products_table.insert("", "end", values=product)
+            else:
+                messagebox.showinfo("Resultado", "Nenhum produto encontrado.")
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Erro", f"Erro ao buscar produtos: {e}")
 
     def clear_form(self):
         # Limpa o formulário após o cadastro
@@ -209,6 +226,3 @@ class InventoryFrame(ctk.CTkFrame):
                       self.sale_price_entry, self.purchase_price_entry,
                       self.brand_entry, self.product_type_entry]:
             entry.delete(0, ctk.END)
-
-
-
