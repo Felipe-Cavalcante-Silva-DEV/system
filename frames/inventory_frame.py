@@ -82,7 +82,7 @@ class InventoryFrame(ctk.CTkFrame):
         CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            code TEXT NOT NULL,
+            code TEXT NOT NULL UNIQUE,
             quantity INTEGER NOT NULL,
             sale_price REAL NOT NULL,
             purchase_price REAL NOT NULL,
@@ -172,19 +172,31 @@ class InventoryFrame(ctk.CTkFrame):
             conn = sqlite3.connect("products.db")
             cursor = conn.cursor()
 
+            # Verifica se já existe um produto com o mesmo código ou nome
             cursor.execute('''
-            INSERT INTO products (name, code, quantity, sale_price, purchase_price, brand, product_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (name, code, quantity, sale_price, purchase_price, brand, product_type))
+            SELECT id FROM products WHERE code = ? OR name = ?
+            ''', (code, name))
+            result = cursor.fetchone()
+
+            if result:
+                # Se já existir código ou nome, exibe erro
+                messagebox.showerror("Erro", "Já existe um produto com este código ou nome.")
+            else:
+                # Caso contrário, insere um novo registro
+                cursor.execute('''
+                INSERT INTO products (name, code, quantity, sale_price, purchase_price, brand, product_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (name, code, quantity, sale_price, purchase_price, brand, product_type))
+                messagebox.showinfo("Sucesso", "Produto cadastrado com sucesso!")
 
             conn.commit()
             conn.close()
-
-            messagebox.showinfo("Sucesso", "Produto cadastrado com sucesso!")
             self.clear_form()
 
         except sqlite3.Error as e:
             messagebox.showerror("Erro", f"Erro ao cadastrar: {e}")
+
+
 
     def search_product(self):
         # Função para buscar produto
