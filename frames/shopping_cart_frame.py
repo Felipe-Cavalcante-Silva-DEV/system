@@ -7,6 +7,7 @@ from tkcalendar import Calendar
 from datetime import datetime
 from widgets.tabelaprodutos import create_products_table
 from widgets.tabelacarrinho import create_cart_table
+from basecarrinho import criar_banco, inserir_produto, obter_produtos
 
 def get_vendedores():
         conn = sqlite3.connect("users.db")  # Conecta ao banco de dados
@@ -66,7 +67,7 @@ class ShoppingFrame(ctk.CTkFrame):
         self.criar_carrinho_label = ctk.CTkLabel(self.left_frame_up, text="Criar Carrinho", font=("Arial", 16))
         self.criar_carrinho_label.grid(row=2, column=0, padx=20, pady=(0, 15), sticky="s") 
 
-        self.criar_carrinho_button = ctk.CTkButton(self.left_frame_up, text="Criar Carrinho", font=("Arial", 16))
+        self.criar_carrinho_button = ctk.CTkButton(self.left_frame_up, text="Criar Carrinho", font=("Arial", 16), command=self.carregar_dados)
         self.criar_carrinho_button.grid(row=3, column=0, padx=20, sticky="n",)
 
 
@@ -79,36 +80,12 @@ class ShoppingFrame(ctk.CTkFrame):
 
         self.left_frame_down = ctk.CTkFrame(self)
         self.left_frame_down.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
-
-
-        def check_cart_products():
-            """Verifica se há produtos na tabela carrinho."""
-            conn = sqlite3.connect('carrinho.db')
-            cursor = conn.cursor()
-
-            # Verificar se há produtos na tabela carrinho
-            cursor.execute("SELECT COUNT(*) FROM carrinho")
-            count = cursor.fetchone()[0]
-
-            conn.close()
-            return count > 0  # Retorna True se houver produtos, False se não houver
-    
-        if check_cart_products():  # Verifica se há produtos no carrinho
-            self.cart_table = create_cart_table(self.left_frame_down)
-            self.cart_table.pack(padx=20, pady=20, fill="both", expand=True)
-
-
-    
         
         
+        
+        self.cart_table = create_cart_table(self.left_frame_down)
 
-        
-
-        
-        
-
-       
-        
+            
         # Frame superior direito
         self.right_frame_up = ctk.CTkFrame(self)
         self.right_frame_up.grid(row=0, column=2, sticky="nsew", padx=10, pady=10)
@@ -154,27 +131,9 @@ class ShoppingFrame(ctk.CTkFrame):
         self.divider = ctk.CTkFrame(self, width=2, fg_color="gray")
         self.divider.grid(row=0, column=1, sticky="ns", rowspan=2)  # Divisória entre os frames
 
-    def check_cart_products():
-        """Verifica se há produtos na tabela carrinho."""
-        conn = sqlite3.connect('carrinho.db')
-        cursor = conn.cursor()
-
-        # Verificar se há produtos na tabela carrinho
-        cursor.execute("SELECT COUNT(*) FROM carrinho")
-        count = cursor.fetchone()[0]
-
-        conn.close()
-        return count > 0  # Retorna True se houver produtos, False se não houver
     
-    def add_cart_table(self):
-        """Adiciona a treeview do carrinho se houver produtos no carrinho"""
-        if check_cart_products():  # Se houver produtos no carrinho
-            # Criar e exibir a treeview do carrinho
-            self.cart_table = create_cart_table(self.left_frame_down)
-            self.cart_table.pack(padx=20, pady=20, fill="both", expand=True)
-        else:
-            # Caso não haja produtos, exibir uma mensagem
-            ctk.CTkMessageBox.show_info("Carrinho Vazio", "Não há produtos no carrinho!")
+    
+    
 
         
 
@@ -182,7 +141,7 @@ class ShoppingFrame(ctk.CTkFrame):
         """Adicionar produtos selecionados no carrinho e armazenar no banco de dados"""
         selected_items = self.products_table.selection()  # Obtém os itens selecionados na treeview1
         if not selected_items:
-            ctk.CTkMessageBox.show_info("Aviso", "Selecione pelo menos um produto!")
+            messagebox.showinfo("Aviso", "Selecione pelo menos um produto!")
             return
 
         conn = sqlite3.connect('carrinho.db')  # Conectar ao banco de dados do carrinho
@@ -241,10 +200,7 @@ class ShoppingFrame(ctk.CTkFrame):
         cal.pack(padx=20, pady=20)
 
         # Função para definir a data escolhida no botão
-        def select_date():
-            selected_date = cal.get_date()
-            self.date_button.configure(text=selected_date)  # Atualiza o texto do botão com a data selecionada
-            calendar_window.destroy()  # Fecha a janela do calendário
+     # Fecha a janela do calendário
 
         # Botão para confirmar a seleção da data
         select_button = ctk.CTkButton(calendar_window, text="Confirmar Data", command=select_date)
@@ -288,25 +244,30 @@ class ShoppingFrame(ctk.CTkFrame):
    
 
 
-    def get_current_date(self):
-        # Retorna a data atual no formato desejado
-        from datetime import datetime
-        return datetime.now().strftime("%d/%m/%Y")
+    
+    
+    def carregar_dados(self):
+        """Carrega os dados do banco de dados para a Tabela do Carrinho."""
+        # Conectar ao banco de dados
+        conn = sqlite3.connect("products.db")
+        cursor = conn.cursor()
 
-    def open_calendar(self):
-        """Função para abrir o calendário e permitir a seleção de uma data"""
-        # Criar uma nova janela de calendário
-        calendar_window = tk.Toplevel(self)  # Usando 'tk' para criar a janela
-        calendar_window.title("Selecionar Data")
+        cursor.execute('SELECT * FROM products')
+        products = cursor.fetchall()
+        conn.close()
 
-        # Criar o calendário
-        cal = Calendar(calendar_window, selectmode="day", date_pattern="yyyy-mm-dd")
-        cal.pack(padx=20, pady=20)
+        # Limpar dados existentes
+        for item in self.cart_table.get_children():
+            self.cart_table.delete(item)
 
-        # Função para definir a data escolhida no botão
-        def select_date():
-            selected_date = cal.get_date()
-            self.date_button.configure(text=selected_date)  # Atualiza o texto do botão com a data selecionada
-            calendar_window.destroy()  # Fecha a janela do calendário
-
+        # Inserir novos dados
+        if products:
+            for i, product in enumerate(products):
+                tag = "even" if i % 2 == 0 else "odd"
+                self.cart_table.insert("", "end", values=product, tags=(tag,))
+        else:
+            messagebox.showinfo("Resultado", "Nenhum produto encontrado.")
+            
+            
+        
     
