@@ -2,6 +2,8 @@ import customtkinter as ctk
 import tkinter.messagebox as messagebox
 import sqlite3
 from tkinter import ttk
+from widgets.tabelaprodutos import create_products_table
+from widgets.tabelacarrinho import create_cart_table
 
 
 class InventoryFrame(ctk.CTkFrame):
@@ -20,11 +22,11 @@ class InventoryFrame(ctk.CTkFrame):
 
         # Lado esquerdo (formulário de cadastro)
         self.left_frame = ctk.CTkFrame(self)
-        self.left_frame.grid(row=0, column=0, sticky="nsew")
+        self.left_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
         # Lado direito (exibição de produtos)
         self.right_frame = ctk.CTkFrame(self)
-        self.right_frame.grid(row=0, column=2, sticky="nsew")
+        self.right_frame.grid(row=0, column=2, sticky="nsew", padx=10, pady=10)
 
         # Barra seletora no topo do left_frame
         self.cadastro_type = ctk.StringVar(value="Manual")
@@ -51,27 +53,12 @@ class InventoryFrame(ctk.CTkFrame):
         self.search_button = ctk.CTkButton(self.right_frame, text="Pesquisar", command=self.search_product)
         self.search_button.pack(padx=20, pady=5)
 
-        # Criando a tabela usando Treeview
-        self.products_table = ttk.Treeview(self.right_frame, columns=("ID", "CODIGO", "Nome", "Preço", "Estoque", "Marca", "Tipo"), show="headings")
+        # CRIANDO TABELA IMPORTADA
+        self.products_table = create_products_table(self.right_frame)
         self.products_table.pack(padx=20, pady=20, fill="both", expand=True)
+        self.products_table.tag_configure("odd", background="white")
+        self.products_table.tag_configure("even", background="#f0f0f0")
         
-        # Configurando as colunas
-        self.products_table.heading("ID", text="ID")
-        self.products_table.heading("CODIGO", text="CODIGO")
-        self.products_table.heading("Nome", text="Nome")
-        self.products_table.heading("Preço", text="Preço")
-        self.products_table.heading("Estoque", text="Estoque")
-        self.products_table.heading("Marca", text="Marca")
-        self.products_table.heading("Tipo", text="Tipo")
-
-        self.products_table.column("ID", width=25, anchor="center")
-        self.products_table.column("CODIGO", width=70, anchor="center")
-        self.products_table.column("Nome", width=180, anchor="w")
-        self.products_table.column("Preço", width=90, anchor="e")
-        self.products_table.column("Estoque", width=90, anchor="center")
-        self.products_table.column("Marca", width=100, anchor="w")
-        self.products_table.column("Tipo", width=100, anchor="w")
-
         self.init_database()
 
     def init_database(self):
@@ -210,7 +197,7 @@ class InventoryFrame(ctk.CTkFrame):
             conn = sqlite3.connect("products.db")
             cursor = conn.cursor()
 
-            cursor.execute('''
+            cursor.execute(''' 
             SELECT id, code, name, sale_price, quantity, brand, product_type FROM products
             WHERE name LIKE ? OR code LIKE ?
             ''', ('%' + search_query + '%', '%' + search_query + '%'))
@@ -224,13 +211,15 @@ class InventoryFrame(ctk.CTkFrame):
 
             # Inserir os resultados no Treeview
             if products:
-                for product in products:
-                    self.products_table.insert("", "end", values=product)
+                for i, product in enumerate(products):
+                    tag = "even" if i % 2 == 0 else "odd"  # Alterna entre as tags "odd" e "even"
+                    self.products_table.insert("", "end", values=product, tags=(tag,))
             else:
                 messagebox.showinfo("Resultado", "Nenhum produto encontrado.")
 
         except sqlite3.Error as e:
             messagebox.showerror("Erro", f"Erro ao buscar produtos: {e}")
+
 
     def clear_form(self):
         # Limpa o formulário após o cadastro
