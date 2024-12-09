@@ -16,7 +16,7 @@ class App(ctk.CTk):
         super().__init__()
 
         self.title("SYS")
-        self.geometry("1200x750")  # Inicialmente com tamanho menor  (275x250)
+         # Inicialmente com tamanho menor  (275x250)
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)

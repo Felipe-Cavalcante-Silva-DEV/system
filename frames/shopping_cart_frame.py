@@ -7,7 +7,9 @@ from tkcalendar import Calendar
 from datetime import datetime
 from widgets.tabelaprodutos import create_products_table
 from widgets.tabelacarrinho import create_cart_table
-from basecarrinho import criar_banco, inserir_produto, obter_produtos
+from basecarrinho import criar_banco
+
+
 
 def get_vendedores():
         conn = sqlite3.connect("users.db")  # Conecta ao banco de dados
@@ -69,14 +71,22 @@ class ShoppingFrame(ctk.CTkFrame):
 
         self.criar_carrinho_button = ctk.CTkButton(self.left_frame_up, text="Criar Carrinho", font=("Arial", 16), command=self.carregar_dados)
         self.criar_carrinho_button.grid(row=3, column=0, padx=20, sticky="n",)
+        
+        
+        # DELETAR PRODUTO CARRINHO
+        self.deletar_produto_label = ctk.CTkLabel(self.left_frame_up, text="Deletar Produto", font=("Arial", 16))
+        self.deletar_produto_label.grid(row=2, column=1, padx=20, pady=(0, 15), sticky="s")
+                        
+        self.deletar_produto_button = ctk.CTkButton(self.left_frame_up, text="Deletar Produto", font=("Arial", 16), command=self.delete_selected)
+        self.deletar_produto_button.grid(row=3, column=1, padx=20, sticky="n",)
 
 
         # DROPMENU DE CLIENTE
         self.cliente_label = ctk.CTkLabel(self.left_frame_up, text="Cliente", font=("Arial", 16))
-        self.cliente_label.grid(row=2, column=1, padx=20, pady=(0, 15), sticky="s") 
+        self.cliente_label.grid(row=2, column=2, padx=20, pady=(0, 15), sticky="s") 
 
         self.cliente_button = ctk.CTkOptionMenu(self.left_frame_up, values=["cliente1", "cliente2"], font=("Arial", 16),)
-        self.cliente_button.grid(row=3, column=1, padx=20, sticky="n")
+        self.cliente_button.grid(row=3, column=2, padx=20, sticky="n")
 
         self.left_frame_down = ctk.CTkFrame(self)
         self.left_frame_down.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
@@ -134,18 +144,31 @@ class ShoppingFrame(ctk.CTkFrame):
     
     
     
+    
 
         
 
     def on_button_click(self):
         """Adicionar produtos selecionados no carrinho e armazenar no banco de dados"""
-        selected_items = self.products_table.selection()  # Obtém os itens selecionados na treeview1
+        selected_items = self.products_table.selection()  # Obtém os itens selecionados na Treeview
         if not selected_items:
             messagebox.showinfo("Aviso", "Selecione pelo menos um produto!")
             return
 
-        conn = sqlite3.connect('carrinho.db')  # Conectar ao banco de dados do carrinho
+        # Conectar ao banco de dados e garantir que a tabela 'carrinho' exista
+        conn = sqlite3.connect('carrinho.db')
         cursor = conn.cursor()
+
+        # Criar a tabela, se não existir
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS carrinho (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                code TEXT NOT NULL UNIQUE,
+                quantity INTEGER NOT NULL,
+                sale_price REAL NOT NULL
+            );
+        ''')
 
         for item in selected_items:
             # Obter os dados do produto selecionado
@@ -154,30 +177,58 @@ class ShoppingFrame(ctk.CTkFrame):
             nome = item_values[2]       # Nome do produto
             codigo = item_values[1]     # Código do produto
             quantidade = item_values[3] # Quantidade disponível
-            preco = item_values[4]
-                   # Preço do produto
+            preco = item_values[4]      # Preço do produto
 
             # Inserir os dados na tabela do carrinho
             try:
                 cursor.execute('''
-                INSERT INTO carrinho (id, code, name, quantity, sale_price)
-                VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO carrinho (id, code, name, quantity, sale_price)
+                    VALUES (?, ?, ?, ?, ?)
                 ''', (id, codigo, nome, quantidade, preco))
 
                 conn.commit()  # Confirmar a inserção no banco de dados
 
-                # Opcional: Você pode imprimir ou mostrar uma mensagem indicando que o produto foi adicionado
-                print(f'Produto {nome} adicionado ao carrinho.')
+                # Opcional: mensagem de confirmação
+                print(f'Produto "{nome}" adicionado ao carrinho.')
             
             except sqlite3.IntegrityError:
                 # Caso já exista o produto (unique constraint no código)
-                print(f'O produto {nome} já está no carrinho.')
+                print(f'O produto "{nome}" já está no carrinho.')
 
         conn.close()  # Fechar a conexão com o banco
 
-        
 
-    
+
+    def delete_selected(self):
+        """Deleta os itens selecionados"""
+        selected_items = self.cart_table.selection()  # Obtem os IDs dos itens selecionados
+        if not selected_items:
+            messagebox.showwarning("Aviso", "Nenhum item selecionado!")
+            return
+
+        confirm = messagebox.askyesno("Confirmação", f"Tem certeza que deseja deletar {len(selected_items)} item(s)?")
+        if confirm:
+            # Conectar ao banco de dados fora do loop
+            conn = sqlite3.connect('carrinho.db')
+            cursor = conn.cursor()
+
+            for item_id in selected_items:
+                # Deletar do banco de dados usando o iid da Treeview, que é o id do banco de dados
+                cursor.execute("DELETE FROM carrinho WHERE id = ?", (item_id,))
+                conn.commit()  # Commit para cada exclusão
+
+                # Remover da Treeview
+                self.cart_table.delete(item_id)
+
+            conn.close()  # Fechar a conexão com o banco de dados
+
+            messagebox.showinfo("Sucesso", "Itens deletados com sucesso!")
+
+
+
+
+
+        
 
     
         
@@ -249,10 +300,10 @@ class ShoppingFrame(ctk.CTkFrame):
     def carregar_dados(self):
         """Carrega os dados do banco de dados para a Tabela do Carrinho."""
         # Conectar ao banco de dados
-        conn = sqlite3.connect("products.db")
+        conn = sqlite3.connect("carrinho.db")
         cursor = conn.cursor()
 
-        cursor.execute('SELECT * FROM products')
+        cursor.execute('SELECT * FROM carrinho')
         products = cursor.fetchall()
         conn.close()
 
@@ -264,10 +315,17 @@ class ShoppingFrame(ctk.CTkFrame):
         if products:
             for i, product in enumerate(products):
                 tag = "even" if i % 2 == 0 else "odd"
-                self.cart_table.insert("", "end", values=product, tags=(tag,))
+                
+                # Reorganize os dados para corresponder à ordem das colunas
+                item_values = (product[0],
+                            product[2],  # Nome
+                            product[1],  # Código
+                            product[3],  # Quantidade
+                            product[4])  # Preço
+
+                # Inserir na Treeview, usando product[0] (id) como iid
+                self.cart_table.insert("", "end", id=product[0], values=item_values, tags=(tag,))
         else:
             messagebox.showinfo("Resultado", "Nenhum produto encontrado.")
-            
-            
+                
         
-    
