@@ -176,15 +176,15 @@ class ShoppingFrame(ctk.CTkFrame):
             id = item_values[0]
             nome = item_values[2]       # Nome do produto
             codigo = item_values[1]     # Código do produto
-            quantidade = item_values[3] # Quantidade disponível
-            preco = item_values[4]      # Preço do produto
+            quantidade = item_values[4] # Quantidade disponível
+            preco = item_values[3]      # Preço do produto
 
             # Inserir os dados na tabela do carrinho
             try:
                 cursor.execute('''
-                    INSERT INTO carrinho (id, code, name, quantity, sale_price)
+                    INSERT INTO carrinho (id, code, name, sale_price, quantity)
                     VALUES (?, ?, ?, ?, ?)
-                ''', (id, codigo, nome, quantidade, preco))
+                ''', (id, codigo, nome, preco, quantidade))
 
                 conn.commit()  # Confirmar a inserção no banco de dados
 
