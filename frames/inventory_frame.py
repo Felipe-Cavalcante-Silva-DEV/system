@@ -2,6 +2,7 @@ import customtkinter as ctk
 import tkinter.messagebox as messagebox
 import sqlite3
 from tkinter import ttk
+from widgets.search import search_product
 from widgets.tabelaprodutos import create_products_table
 from widgets.tabelacarrinho import create_cart_table
 
@@ -50,7 +51,8 @@ class InventoryFrame(ctk.CTkFrame):
         self.search_entry = ctk.CTkEntry(self.right_frame)
         self.search_entry.pack(padx=20, pady=5)
 
-        self.search_button = ctk.CTkButton(self.right_frame, text="Pesquisar", command=self.search_product)
+        
+        self.search_button = ctk.CTkButton(self.right_frame, text="Pesquisar", command=lambda: search_product(self.search_entry, self.products_table))
         self.search_button.pack(padx=20, pady=5)
 
         # CRIANDO TABELA IMPORTADA
@@ -185,42 +187,7 @@ class InventoryFrame(ctk.CTkFrame):
 
 
 
-    def search_product(self):
-        # Função para buscar produto
-        search_query = self.search_entry.get()
-
-        if not search_query:
-            messagebox.showwarning("Atenção", "Digite o nome ou código do produto para pesquisar.")
-            return
-
-        try:
-            conn = sqlite3.connect("products.db")
-            cursor = conn.cursor()
-
-            cursor.execute(''' 
-            SELECT id, code, name, sale_price, quantity, brand, product_type FROM products
-            WHERE name LIKE ? OR code LIKE ?
-            ''', ('%' + search_query + '%', '%' + search_query + '%'))
-
-            products = cursor.fetchall()
-            conn.close()
-
-            # Limpar os dados atuais da tabela
-            for row in self.products_table.get_children():
-                self.products_table.delete(row)
-
-            # Inserir os resultados no Treeview
-            if products:
-                for i, product in enumerate(products):
-                    tag = "even" if i % 2 == 0 else "odd"  # Alterna entre as tags "odd" e "even"
-                    self.products_table.insert("", "end", values=product, tags=(tag,))
-            else:
-                messagebox.showinfo("Resultado", "Nenhum produto encontrado.")
-
-        except sqlite3.Error as e:
-            messagebox.showerror("Erro", f"Erro ao buscar produtos: {e}")
-
-
+    
     def clear_form(self):
         # Limpa o formulário após o cadastro
         for entry in [self.name_entry, self.code_entry, self.quantity_entry,

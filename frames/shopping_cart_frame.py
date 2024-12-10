@@ -1,5 +1,5 @@
 import customtkinter as ctk
-import tkinter.messagebox as messagebox
+from tkinter import messagebox, simpledialog
 import sqlite3
 from tkinter import ttk
 import tkinter as tk
@@ -7,6 +7,7 @@ from tkcalendar import Calendar
 from datetime import datetime
 from widgets.tabelaprodutos import create_products_table
 from widgets.tabelacarrinho import create_cart_table
+from widgets.search import search_product
 from basecarrinho import criar_banco
 
 
@@ -19,6 +20,15 @@ def get_vendedores():
         vendedores = [row[0] for row in cursor.fetchall()]  # Extrai os nomes dos resultados
         conn.close()  # Fecha a conexão
         return vendedores
+    
+def get_clientes():
+        conn = sqlite3.connect("users.db")  # Conecta ao banco de dados
+        cursor = conn.cursor()
+        query = "SELECT name FROM users WHERE role = 'cliente' COLLATE NOCASE"  # Query para selecionar os nomes dos clientes
+        cursor.execute(query)
+        clientes = [row[0] for row in cursor.fetchall()]  # Extrai os nomes dos resultados
+        conn.close()  # Fecha a conexão
+        return clientes
 
 class ShoppingFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
@@ -79,14 +89,17 @@ class ShoppingFrame(ctk.CTkFrame):
                         
         self.deletar_produto_button = ctk.CTkButton(self.left_frame_up, text="Deletar Produto", font=("Arial", 16), command=self.delete_selected)
         self.deletar_produto_button.grid(row=3, column=1, padx=20, sticky="n",)
+        
+        
+        
 
 
         # DROPMENU DE CLIENTE
         self.cliente_label = ctk.CTkLabel(self.left_frame_up, text="Cliente", font=("Arial", 16))
-        self.cliente_label.grid(row=2, column=2, padx=20, pady=(0, 15), sticky="s") 
-
-        self.cliente_button = ctk.CTkOptionMenu(self.left_frame_up, values=["cliente1", "cliente2"], font=("Arial", 16),)
-        self.cliente_button.grid(row=3, column=2, padx=20, sticky="n")
+        self.cliente_label.grid(row=0, column=2, padx=20, pady=(0, 15), sticky="s") 
+        clientes = get_clientes()
+        self.cliente_button = ctk.CTkOptionMenu(self.left_frame_up, values=clientes, font=("Arial", 16),)
+        self.cliente_button.grid(row=1, column=2, padx=20, sticky="n")
 
         self.left_frame_down = ctk.CTkFrame(self)
         self.left_frame_down.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
@@ -115,7 +128,7 @@ class ShoppingFrame(ctk.CTkFrame):
         self.search_entry = ctk.CTkEntry(self.right_frame_up)
         self.search_entry.grid(row=1, column=0, pady=10, sticky="n")  # Centralizado horizontalmente
 
-        self.search_button = ctk.CTkButton(self.right_frame_up, text="Pesquisar", command=self.search_product)
+        self.search_button = ctk.CTkButton(self.right_frame_up, text="Pesquisar", command=lambda: search_product(self.search_entry, self.products_table))
         self.search_button.grid(row=2, column=0, pady=10, sticky="n")  # Centralizado horizontalmente
 
         # Último botão no canto inferior direito com padding visual
@@ -149,54 +162,55 @@ class ShoppingFrame(ctk.CTkFrame):
         
 
     def on_button_click(self):
-        """Adicionar produtos selecionados no carrinho e armazenar no banco de dados"""
+        """Adicionar produtos selecionados no carrinho e armazenar no banco de dados."""
         selected_items = self.products_table.selection()  # Obtém os itens selecionados na Treeview
         if not selected_items:
             messagebox.showinfo("Aviso", "Selecione pelo menos um produto!")
             return
 
-        # Conectar ao banco de dados e garantir que a tabela 'carrinho' exista
-        conn = sqlite3.connect('carrinho.db')
-        cursor = conn.cursor()
+        # Garantir que a tabela 'carrinho' exista
+        criar_banco()
 
-        # Criar a tabela, se não existir
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS carrinho (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                code TEXT NOT NULL UNIQUE,
-                quantity INTEGER NOT NULL,
-                sale_price REAL NOT NULL
-            );
-        ''')
+        with sqlite3.connect('carrinho.db') as conn:
+            cursor = conn.cursor()
 
-        for item in selected_items:
-            # Obter os dados do produto selecionado
-            item_values = self.products_table.item(item, "values")
-            id = item_values[0]
-            nome = item_values[2]       # Nome do produto
-            codigo = item_values[1]     # Código do produto
-            quantidade = item_values[4] # Quantidade disponível
-            preco = item_values[3]      # Preço do produto
+            for item in selected_items:
+                # Obter os dados do produto selecionado
+                item_values = self.products_table.item(item, "values")
+                id = item_values[0]
+                nome = item_values[2]       # Nome do produto
+                codigo = item_values[1]     # Código do produto
+                preco = item_values[4]      # Preço do produto
 
-            # Inserir os dados na tabela do carrinho
-            try:
-                cursor.execute('''
-                    INSERT INTO carrinho (id, code, name, sale_price, quantity)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (id, codigo, nome, preco, quantidade))
+                # Perguntar ao usuário a quantidade desejada
+                quantidade = simpledialog.askinteger(
+                    "Quantidade",
+                    f"Quantos '{nome}' deseja adicionar ao carrinho?",
+                    minvalue=1
+                )
+                if quantidade is None:  # Usuário cancelou
+                    continue
 
-                conn.commit()  # Confirmar a inserção no banco de dados
+                # Verificar se o produto já está no carrinho
+                cursor.execute("SELECT quantity FROM carrinho WHERE code = ?", (codigo,))
+                result = cursor.fetchone()
 
-                # Opcional: mensagem de confirmação
-                print(f'Produto "{nome}" adicionado ao carrinho.')
-            
-            except sqlite3.IntegrityError:
-                # Caso já exista o produto (unique constraint no código)
-                print(f'O produto "{nome}" já está no carrinho.')
+                if result:
+                    # Produto já está no carrinho, atualizar quantidade
+                    nova_quantidade = result[0] + quantidade
+                    cursor.execute("UPDATE carrinho SET quantity = ? WHERE code = ?", (nova_quantidade, codigo))
+                    messagebox.showinfo("Atualizado", f"Quantidade de '{nome}' atualizada para {nova_quantidade}.")
+                else:
+                    # Produto não está no carrinho, inserir novo
+                    cursor.execute('''
+                        INSERT INTO carrinho (id, code, name, quantity, sale_price)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (id, codigo, nome, quantidade, preco))
+                    messagebox.showinfo("Adicionado", f"'{nome}' foi adicionado ao carrinho.")
 
-        conn.close()  # Fechar a conexão com o banco
+                conn.commit()  # Confirmar a operação no banco de dados
 
+            messagebox.showinfo("Sucesso", "Produtos processados com sucesso.")
 
 
     def delete_selected(self):
@@ -233,7 +247,7 @@ class ShoppingFrame(ctk.CTkFrame):
     
         
 
-
+    
     
 
     def get_current_date(self):
@@ -251,51 +265,20 @@ class ShoppingFrame(ctk.CTkFrame):
         cal.pack(padx=20, pady=20)
 
         # Função para definir a data escolhida no botão
-     # Fecha a janela do calendário
+        def select_date():
+            selected_date = cal.get_date()  # Obter a data selecionada no calendário
+            # Fechar a janela do calendário
+            calendar_window.destroy()
 
+            # Alterar o texto do botão 'date_button' para a data selecionada
+            self.date_button.configure(text=selected_date)  # Atualiza o texto do botão com a data escolhida
+
+
+            
         # Botão para confirmar a seleção da data
         select_button = ctk.CTkButton(calendar_window, text="Confirmar Data", command=select_date)
         select_button.pack(pady=10)
-
-    def search_product(self):
-        # Função para buscar produto
-        search_query = self.search_entry.get()
-
-        if not search_query:
-            messagebox.showwarning("Atenção", "Digite o nome ou código do produto para pesquisar.")
-            return
-
-        try:
-            conn = sqlite3.connect("products.db")
-            cursor = conn.cursor()
-
-            cursor.execute(''' 
-            SELECT id, code, name, sale_price, quantity, brand, product_type FROM products
-            WHERE name LIKE ? OR code LIKE ?
-            ''', ('%' + search_query + '%', '%' + search_query + '%'))
-
-            products = cursor.fetchall()
-            conn.close()
-
-            # Limpar os dados atuais da tabela
-            for row in self.products_table.get_children():
-                self.products_table.delete(row)
-
-            # Inserir os resultados no Treeview
-            if products:
-                for i, product in enumerate(products):
-                    tag = "even" if i % 2 == 0 else "odd"  # Alterna entre as tags "odd" e "even"
-                    self.products_table.insert("", "end", values=product, tags=(tag,))
-            else:
-                messagebox.showinfo("Resultado", "Nenhum produto encontrado.")
-
-        except sqlite3.Error as e:
-            messagebox.showerror("Erro", f"Erro ao buscar produtos: {e}")
-
-   
-
-
-    
+  
     
     def carregar_dados(self):
         """Carrega os dados do banco de dados para a Tabela do Carrinho."""
