@@ -73,14 +73,14 @@ def edit_cell(cart_table, event):
     cart_table.item(item_id, values=new_values)
 
     # Atualizar o banco de dados
-    column_names = ["id", "code", "name", "quantity", "sale_price"]
+    column_names = ["id", "code", "name", "quantity", "total_price"]
     try:
         with sqlite3.connect("carrinho.db") as conn:
             cursor = conn.cursor()
 
             # Atualizar a quantidade e o preço no banco de dados
             cursor.execute(
-                f"UPDATE carrinho SET {column_names[column_index]} = ?, sale_price = ? WHERE id = ?",
+                f"UPDATE carrinho SET {column_names[column_index]} = ?, total_price = ? WHERE id = ?",
                 (new_value, new_sale_price, current_values[0])
             )
             conn.commit()

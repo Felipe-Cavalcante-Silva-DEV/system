@@ -9,6 +9,7 @@ from widgets.tabelaprodutos import create_products_table
 from widgets.tabelacarrinho import create_cart_table
 from widgets.search import search_product
 from basecarrinho import criar_banco
+from frames.expenses_frame import save_sale
 
 
 
@@ -89,6 +90,14 @@ class ShoppingFrame(ctk.CTkFrame):
                         
         self.deletar_produto_button = ctk.CTkButton(self.left_frame_up, text="Deletar Produto", font=("Arial", 16), command=self.delete_selected)
         self.deletar_produto_button.grid(row=3, column=1, padx=20, sticky="n",)
+        
+        
+        
+        self.finalizar_compra_label = ctk.CTkLabel(self.left_frame_up, text="Deletar Produto", font=("Arial", 16))
+        self.finalizar_compra_label.grid(row=2, column=2, padx=20, pady=(0, 15), sticky="s")
+                               
+        self.finalizar_compra_button = ctk.CTkButton(self.left_frame_up, text="Finalizar Venda", command=self.finalize_sale)
+        self.finalizar_compra_button.grid(row=3, column=2, padx=20, sticky="n",)
         
         
         
@@ -182,6 +191,9 @@ class ShoppingFrame(ctk.CTkFrame):
                 codigo = item_values[1]     # Código do produto
                 preco = item_values[4]      # Preço do produto
 
+                # Substituir vírgula por ponto para garantir que a conversão para float funcione
+                preco = preco.replace(",", ".")
+
                 # Perguntar ao usuário a quantidade desejada
                 quantidade = simpledialog.askinteger(
                     "Quantidade",
@@ -191,18 +203,23 @@ class ShoppingFrame(ctk.CTkFrame):
                 if quantidade is None:  # Usuário cancelou
                     continue
 
+                # Calcular o valor total do item (preço x quantidade)
+                total_price = float(preco) * quantidade
+
                 # Verificar se o produto já está no carrinho
-                cursor.execute("SELECT quantity FROM carrinho WHERE code = ?", (codigo,))
+                cursor.execute("SELECT quantity, sale_price FROM carrinho WHERE code = ?", (codigo,))
                 result = cursor.fetchone()
 
                 if result:
-                    # Produto já está no carrinho, atualizar quantidade
+                    # Produto já está no carrinho, atualizar quantidade e o valor total
                     nova_quantidade = result[0] + quantidade
-                    cursor.execute("UPDATE carrinho SET quantity = ? WHERE code = ?", (nova_quantidade, codigo))
+                    novo_total_price = result[1] + total_price
+                    cursor.execute("UPDATE carrinho SET quantity = ?, sale_price = ? WHERE code = ?", 
+                                (nova_quantidade, novo_total_price, codigo))
                     messagebox.showinfo("Atualizado", f"Quantidade de '{nome}' atualizada para {nova_quantidade}.")
                 else:
                     # Produto não está no carrinho, inserir novo
-                    cursor.execute('''
+                    cursor.execute(''' 
                         INSERT INTO carrinho (id, code, name, quantity, sale_price)
                         VALUES (?, ?, ?, ?, ?)
                     ''', (id, codigo, nome, quantidade, preco))
@@ -211,6 +228,8 @@ class ShoppingFrame(ctk.CTkFrame):
                 conn.commit()  # Confirmar a operação no banco de dados
 
             messagebox.showinfo("Sucesso", "Produtos processados com sucesso.")
+
+
 
 
     def delete_selected(self):
@@ -310,5 +329,91 @@ class ShoppingFrame(ctk.CTkFrame):
                 self.cart_table.insert("", "end", id=product[0], values=item_values, tags=(tag,))
         else:
             messagebox.showinfo("Resultado", "Nenhum produto encontrado.")
-                
+            
+    def finalize_sale(self):
+        """
+        Finaliza a venda, salvando os dados no banco de dados.
+        """
+        # Obter itens do carrinho
+        conn = sqlite3.connect("carrinho.db")
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id, code, name, quantity, sale_price FROM carrinho")
+        cart_items = [
+            {"id": row[0], "code": row[1], "name": row[2], "quantity": row[3], "sale_price": row[4]}
+            for row in cursor.fetchall()
+        ]
+        conn.close()
+
+        if not cart_items:
+            messagebox.showwarning("Aviso", "O carrinho está vazio. Não é possível finalizar a venda.")
+            return
+
+        # Inicializa o valor total da venda
+        total_value = 0.0
+
+        # Calcular o total da venda
+        for item in cart_items:
+            total_value += float(item["quantity"]) * float(str(item["sale_price"]).replace(",", "."))
+
+        # Solicitar informações do vendedor e cliente (simulação)
+        vendedor = "Vendedor Padrão"  # Você pode substituir isso por uma entrada de texto na interface
+        cliente = "Cliente Padrão"   # Ou solicitar o nome do cliente no momento da venda
+
+        # Salvar a venda
+        save_sale(cart_items, total_value, vendedor, cliente)
+
+        # Limpar o carrinho após salvar a venda
+        conn = sqlite3.connect("carrinho.db")
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM carrinho")
+        conn.commit()
+        conn.close()
+
+        # Mensagem de confirmação
+        print("Carrinho limpo após a venda.")
+
         
+    def save_sale(cart_items, total_value, vendedor_selecionado, cliente_selecionado):
+        """
+        Salva uma venda no banco de dados, incluindo os itens do carrinho.
+
+        :param cart_items: Lista de itens no carrinho (cada item é um dicionário com dados do produto).
+        :param total_value: Valor total da venda.
+        :param vendedor: Nome do vendedor.
+        :param cliente: Nome do cliente.
+        """
+        if not cart_items:
+            messagebox.showwarning("Aviso", "O carrinho está vazio. Não é possível finalizar a venda.")
+            return
+
+        try:
+            conn = sqlite3.connect("sales.db")
+            cursor = conn.cursor()
+
+            # Inserir a venda na tabela 'vendas'
+            data_atual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            cursor.execute('''
+                INSERT INTO vendas (total, vendedor, cliente, data)
+                VALUES (?, ?, ?, ?)
+            ''', (total_value, vendedor_selecionado, cliente_selecionado, data_atual))
+
+            venda_id = cursor.lastrowid  # Obter o ID da venda recém-criada
+
+            # Inserir os itens na tabela 'itens_venda'
+            for item in cart_items:
+                cursor.execute('''
+                    INSERT INTO itens_venda (venda_id, produto_id, nome, quantidade, preco_unitario)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (venda_id, item["id"], item["name"], item["quantity"], item["sale_price"]))
+
+            conn.commit()
+            conn.close()
+
+            messagebox.showinfo("Sucesso", f"Venda registrada com sucesso! ID da venda: {venda_id}")
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Erro", f"Erro ao salvar a venda: {e}")
+                        
+                
