@@ -3,86 +3,144 @@ from tkinter import messagebox
 import sqlite3
 from basevendas import save_sale
 import datetime
+from widgets.tabelavendas import create_sales_table
+
+
+def get_all_rows_as_strings():
+    try:
+        conn = sqlite3.connect("sales.db")  # Conecta ao banco de dados
+        cursor = conn.cursor()
+        query = "SELECT id, vendedor, cliente, total, data FROM vendas"  # Seleciona todas as colunas
+        cursor.execute(query)
+        
+        rows = cursor.fetchall()  # Obtém todas as linhas do resultado
+        result_strings = []
+        
+        for row in rows:
+            # Converte todos os valores para string e combina em uma única string
+            row_string = "  |  ".join(str(value) for value in row)
+            result_strings.append(row_string)
+        
+        return result_strings
+    except sqlite3.Error as e:
+        print(f"Erro no banco de dados: {e}")
+        return []
+    finally:
+        conn.close()  # Fecha a conexão
+
+# Exemplo de uso
+row_strings = get_all_rows_as_strings()
+for row in row_strings:
+    print(row)
+
+
+from tkinter import ttk
+
+def get_items_for_sale(venda_id):
+    try:
+        conn = sqlite3.connect("sales.db")  # Conecta ao banco de dados
+        cursor = conn.cursor()
+        
+        # Consulta para obter os itens relacionados à venda
+        query = '''
+            SELECT id, venda_id, produto_id, nome, quantidade, preco_unitario, total
+            FROM itens_venda
+            WHERE venda_id = ?
+        '''
+        cursor.execute(query, (venda_id,))
+        items = cursor.fetchall()
+        
+        return items  # Retorna os itens como uma lista de tuplas
+    except sqlite3.Error as e:
+        print(f"Erro no banco de dados: {e}")
+        return []
+    finally:
+        conn.close()  # Fecha a conexão
 
 
 class ExpensesFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
-        # Widgets do Frame "Expenses"
-        self.title_home = ctk.CTkLabel(self, text="Expenses", font=("Arial Bold", 36))
-        self.title_home.grid(row=0, column=0, padx=20, pady=20)
+        # Configuração do grid para o frame principal
+        # As colunas 0 (esquerda) e 2 (direita) têm o mesmo peso
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)  # Lado esquerdo
+        self.grid_columnconfigure(1, weight=0)  # Divisor
+        self.grid_columnconfigure(2, weight=1)  # Lado direito
 
-    
+        # Divisor (linha vertical) no meio
+        self.divider = ctk.CTkFrame(self, width=2, fg_color="gray")
+        self.divider.grid(row=0, column=1, sticky="ns")
 
-       
+        # Lado esquerdo (formulário de cadastro)
+        self.left_frame = ctk.CTkFrame(self)
+        self.left_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
-        # Botão para finalizar a venda
-        self.finalize_button = ctk.CTkButton(self, text="Finalizar Venda", command=self.finalize_sale)
-        self.finalize_button.grid(row=2, column=0, padx=20, pady=20)
+        # Configuração do grid dentro do left_frame
+        self.left_frame.grid_rowconfigure(0, weight=1)  # Parte superior
+        self.left_frame.grid_rowconfigure(1, weight=1)  # Parte inferior
+        self.left_frame.grid_columnconfigure(0, weight=1)
 
-    def finalize_sale(self):
-        """
-        Finaliza a venda, salvando os dados no banco de dados.
-        """
-        vendedor = self.selected_vendedor.get()  # Obter o vendedor selecionado
-        cliente = self.selected_cliente.get()  # Obter o cliente selecionado
+        # Frames internos do lado esquerdo
+        self.left_frame_up = ctk.CTkFrame(self.left_frame)  # Agora é filho de left_frame
+        self.left_frame_up.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
-        if vendedor == "Nenhum Vendedor" or cliente == "Nenhum Cliente":
-            messagebox.showwarning("Aviso", "Por favor, selecione um vendedor e um cliente.")
-            return
+        self.left_frame_down = ctk.CTkFrame(self.left_frame)  # Agora é filho de left_frame
+        self.left_frame_down.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
 
-        # Obter itens do carrinho (exemplo simplificado)
-        cart_items = [
-            {"id": 1, "name": "Produto A", "quantity": 2, "sale_price": 10.0},
-            {"id": 2, "name": "Produto B", "quantity": 1, "sale_price": 20.0}
-        ]
+        # Lado direito (exibição de produtos)
+        self.right_frame = ctk.CTkFrame(self)
+        self.right_frame.grid(row=0, column=2, sticky="nsew", padx=10, pady=10)
 
-        # Calcular o total da venda
-        total_value = sum(item["quantity"] * item["sale_price"] for item in cart_items)
+        # Configuração do grid dentro do right_frame (se necessário)
+        self.right_frame.grid_rowconfigure(0, weight=1)  # Ajuste para o conteúdo
+        self.right_frame.grid_columnconfigure(0, weight=1)
 
-        # Salvar a venda no banco de dados
-        save_sale(cart_items, total_value, vendedor, cliente)
+        # Título
+        self.title_home = ctk.CTkLabel(self.left_frame_up, text="Expenses", font=("Arial Bold", 36))
+        self.title_home.pack(pady=10)
 
-        messagebox.showinfo("Sucesso", f"Venda registrada com sucesso! Vendedor: {vendedor}, Cliente: {cliente}")
+        # Dropdown para IDs de vendas
+        self.sales_option = ctk.StringVar(value="Select a sale")
+        self.row_strings = get_all_rows_as_strings()
 
-    def save_sale(self, cart_items, total_value, vendedor, cliente):
-        """
-        Salva uma venda no banco de dados, incluindo os itens do carrinho.
+        if self.row_strings:
+            self.finalize_button = ctk.CTkOptionMenu(
+                self.left_frame_up,
+                values=self.row_strings,
+                variable=self.sales_option,
+                font=("Arial", 16),
+                command=self.display_sale_items
+            )
+            self.finalize_button.pack()
 
-        :param cart_items: Lista de itens no carrinho (cada item é um dicionário com dados do produto).
-        :param total_value: Valor total da venda.
-        :param vendedor: Nome do vendedor.
-        :param cliente: Nome do cliente.
-        """
-        if not cart_items:
-            messagebox.showwarning("Aviso", "O carrinho está vazio. Não é possível finalizar a venda.")
-            return
+        # Tabela de vendas (Treeview)
+        self.sales_table = create_sales_table(self.left_frame_down)
+        self.sales_table.pack(pady=10, padx=10, fill="both", expand=True)
 
-        try:
-            conn = sqlite3.connect("sales.db")
-            cursor = conn.cursor()
 
-            # Inserir a venda na tabela 'vendas'
-            data_atual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cursor.execute('''
-                INSERT INTO vendas (total, vendedor, cliente, data)
-                VALUES (?, ?, ?, ?)
-            ''', (total_value, vendedor, cliente, data_atual))
 
-            venda_id = cursor.lastrowid  # Obter o ID da venda recém-criada
 
-            # Inserir os itens na tabela 'itens_venda'
-            for item in cart_items:
-                cursor.execute('''
-                    INSERT INTO itens_venda (venda_id, produto_id, nome, quantidade, preco_unitario)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (venda_id, item["id"], item["name"], item["quantity"], item["sale_price"]))
 
-            conn.commit()
-            conn.close()
+    def display_sale_items(self, selected_sale):
+        # Extrai o ID da venda do string selecionado
+        venda_id = selected_sale.split("  |  ")[0]
+        if venda_id.isdigit():
+            items = get_items_for_sale(int(venda_id))
+            self.update_sales_table(items)
+        else:
+            # Limpa a tabela se a seleção for inválida
+            self.update_sales_table([])
+            
 
-            messagebox.showinfo("Sucesso", f"Venda registrada com sucesso! ID da venda: {venda_id}")
+    def update_sales_table(self, items):
+        """Atualiza a Treeview com os itens fornecidos."""
+        # Limpa a Treeview
+        for item in self.sales_table.get_children():
+            self.sales_table.delete(item)
 
-        except sqlite3.Error as e:
-            messagebox.showerror("Erro", f"Erro ao salvar a venda: {e}")
+        # Adiciona os novos itens
+        for i, item in enumerate(items):
+            tag = "even" if i % 2 == 0 else "odd"  # Alterna as cores das linhas
+            self.sales_table.insert("", "end", values=item, tags=(tag,))

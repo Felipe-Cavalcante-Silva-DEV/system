@@ -29,6 +29,7 @@ def initialize_sales_db():
             nome TEXT NOT NULL,
             quantidade INTEGER NOT NULL,
             preco_unitario REAL NOT NULL,
+            total REAL NOT NULL,
             FOREIGN KEY (venda_id) REFERENCES vendas(id)
         )
     ''')
@@ -68,9 +69,10 @@ def save_sale(cart_items, total_value, vendedor, cliente):
         # Inserir os itens na tabela 'itens_venda'
         for item in cart_items:
             cursor.execute('''
-                INSERT INTO itens_venda (venda_id, produto_id, nome, quantidade, preco_unitario)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (venda_id, item["id"], item["name"], item["quantity"], item["sale_price"]))
+                INSERT INTO itens_venda (venda_id, produto_id, nome, quantidade, preco_unitario, total)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (venda_id, item["id"], item["name"], item["quantity"], item["sale_price"], item["quantity"] * item["sale_price"]))
+
 
         conn.commit()
         conn.close()

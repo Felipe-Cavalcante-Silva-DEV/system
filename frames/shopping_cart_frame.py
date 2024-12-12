@@ -317,13 +317,15 @@ class ShoppingFrame(ctk.CTkFrame):
         if products:
             for i, product in enumerate(products):
                 tag = "even" if i % 2 == 0 else "odd"
+
+                total_price = float(product[4]) * float(product[3])
                 
                 # Reorganize os dados para corresponder à ordem das colunas
                 item_values = (product[0],
                             product[2],  # Nome
                             product[1],  # Código
                             product[3],  # Quantidade
-                            product[4])  # Preço
+                            f"R${total_price:.2f}")  # Preço
 
                 # Inserir na Treeview, usando product[0] (id) como iid
                 self.cart_table.insert("", "end", id=product[0], values=item_values, tags=(tag,))
@@ -357,11 +359,11 @@ class ShoppingFrame(ctk.CTkFrame):
             total_value += float(item["quantity"]) * float(str(item["sale_price"]).replace(",", "."))
 
         # Solicitar informações do vendedor e cliente (simulação)
-        vendedor = "Vendedor Padrão"  # Você pode substituir isso por uma entrada de texto na interface
-        cliente = "Cliente Padrão"   # Ou solicitar o nome do cliente no momento da venda
+        vendedor_selecionado = self.option_button.get()  # Você pode substituir isso por uma entrada de texto na interface
+        cliente_selecionado = self.cliente_button.get()   # Ou solicitar o nome do cliente no momento da venda
 
         # Salvar a venda
-        save_sale(cart_items, total_value, vendedor, cliente)
+        save_sale(cart_items, total_value, vendedor_selecionado, cliente_selecionado)
 
         # Limpar o carrinho após salvar a venda
         conn = sqlite3.connect("carrinho.db")
