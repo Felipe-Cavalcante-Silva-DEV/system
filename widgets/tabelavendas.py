@@ -6,7 +6,7 @@ def create_sales_table(parent):
     """Cria a tabela Treeview para o carrinho."""
     # Criando a tabela Treeview
     sales_table = ttk.Treeview(parent, columns=("ID", "CodigoVenda", "CodigoProduto", "Produto", "Quantidade", "PreçoUnidade", "PrecoTotal"), show="headings")
-    sales_table.pack(padx=20, pady=20, fill="both", expand=True)
+    
 
     # Configurando as colunas
     sales_table.heading("ID", text="ID")
@@ -19,13 +19,13 @@ def create_sales_table(parent):
 
     
 
-    sales_table.column("ID", width=20, anchor="center")
-    sales_table.column("CodigoVenda", width=30, anchor="center")
-    sales_table.column("CodigoProduto", width=50, anchor="center")
+    sales_table.column("ID", width=5, anchor="center")
+    sales_table.column("CodigoVenda", width=10, anchor="center")
+    sales_table.column("CodigoProduto", width=10, anchor="center")
     sales_table.column("Produto", width=90, anchor="center")
     sales_table.column("Quantidade", width=40, anchor="center")
-    sales_table.column("PreçoUnidade", width=50, anchor="center")
-    sales_table.column("PrecoTotal", width=50, anchor="center")
+    sales_table.column("PreçoUnidade", width=40, anchor="center")
+    sales_table.column("PrecoTotal", width=40, anchor="center")
 
     # Configurando cores alternadas
     sales_table.tag_configure("odd", background="white")
@@ -43,7 +43,7 @@ def create_sales_table(parent):
 
 
 
-# def edit_cell(cart_table, event):
+def edit_cell(cart_table, event):
     """Edita o valor da célula na Treeview e atualiza o banco de dados."""
     # Identificar o item e a coluna selecionados
     item_id = cart_table.focus()
@@ -74,7 +74,7 @@ def create_sales_table(parent):
             return
 
         # Calcular novo preço total
-        unit_price = float(current_values[4].replace(",", ".")) / int(current_values[3])  # Preço unitário atual
+        unit_price = float(current_values[4].replace("R$", "").replace(",", ".")) / int(current_values[3])  # Preço unitário atual
         new_sale_price = unit_price * new_value
     else:
         new_sale_price = float(current_values[4].replace(",", "."))  # Mantém o preço inalterado para outras colunas

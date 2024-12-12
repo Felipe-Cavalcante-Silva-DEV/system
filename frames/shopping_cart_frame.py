@@ -13,6 +13,7 @@ from frames.expenses_frame import save_sale
 
 
 
+
 def get_vendedores():
         conn = sqlite3.connect("users.db")  # Conecta ao banco de dados
         cursor = conn.cursor()
@@ -98,6 +99,8 @@ class ShoppingFrame(ctk.CTkFrame):
                                
         self.finalizar_compra_button = ctk.CTkButton(self.left_frame_up, text="Finalizar Venda", command=self.finalize_sale)
         self.finalizar_compra_button.grid(row=3, column=2, padx=20, sticky="n",)
+        
+        
         
         
         
@@ -357,6 +360,7 @@ class ShoppingFrame(ctk.CTkFrame):
         # Calcular o total da venda
         for item in cart_items:
             total_value += float(item["quantity"]) * float(str(item["sale_price"]).replace(",", "."))
+        total_value = round(total_value, 2)
 
         # Solicitar informações do vendedor e cliente (simulação)
         vendedor_selecionado = self.option_button.get()  # Você pode substituir isso por uma entrada de texto na interface
@@ -395,11 +399,11 @@ class ShoppingFrame(ctk.CTkFrame):
 
             # Inserir a venda na tabela 'vendas'
             data_atual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
+            parcela = "1"
             cursor.execute('''
-                INSERT INTO vendas (total, vendedor, cliente, data)
+                INSERT INTO vendas (total, vendedor, cliente, data, parcelas)
                 VALUES (?, ?, ?, ?)
-            ''', (total_value, vendedor_selecionado, cliente_selecionado, data_atual))
+            ''', (total_value, vendedor_selecionado, cliente_selecionado, data_atual, parcela))
 
             venda_id = cursor.lastrowid  # Obter o ID da venda recém-criada
 

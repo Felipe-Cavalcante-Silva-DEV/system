@@ -16,7 +16,8 @@ def initialize_sales_db():
             total REAL NOT NULL,
             vendedor TEXT NOT NULL,
             cliente TEXT NOT NULL,
-            data TEXT NOT NULL
+            data TEXT NOT NULL,
+            parcelas INTEGER NOT NULL DEFAULT 1
         )
     ''')
 
@@ -33,6 +34,19 @@ def initialize_sales_db():
             FOREIGN KEY (venda_id) REFERENCES vendas(id)
         )
     ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS parcelas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            venda_id INTEGER NOT NULL,
+            valor_parcela REAL NOT NULL,              
+            cliente TEXT NOT NULL,
+            data_parcela TEXT NOT NULL,
+            FOREIGN KEY (data_parcela) REFERENCES vendas(data),
+            FOREIGN KEY (venda_id) REFERENCES vendas(id)
+        )
+    ''')
+
 
     conn.commit()
     conn.close()

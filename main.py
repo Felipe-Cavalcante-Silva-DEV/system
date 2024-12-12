@@ -17,6 +17,11 @@ class App(ctk.CTk):
 
         self.title("SYS")
          # Inicialmente com tamanho menor  (275x250)
+        self.winfo_toplevel()
+        self.state("zoomed")
+        
+        
+
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)

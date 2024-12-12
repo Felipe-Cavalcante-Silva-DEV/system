@@ -64,7 +64,8 @@ def edit_cell(cart_table, event):
         unit_price = float(current_values[4].replace(",", ".")) / int(current_values[3])  # Preço unitário atual
         new_sale_price = unit_price * new_value
     else:
-        new_sale_price = float(current_values[4].replace(",", "."))  # Mantém o preço inalterado para outras colunas
+        new_sale_price = float(current_values[4].replace("R$", "").replace(",", "."))  # Remove R$ and replace comma with period
+
 
     # Atualizar a Treeview
     new_values = list(current_values)
@@ -73,14 +74,14 @@ def edit_cell(cart_table, event):
     cart_table.item(item_id, values=new_values)
 
     # Atualizar o banco de dados
-    column_names = ["id", "code", "name", "quantity", "total_price"]
+    column_names = ["id", "code", "name", "quantity", "sale_price"]
     try:
         with sqlite3.connect("carrinho.db") as conn:
             cursor = conn.cursor()
 
             # Atualizar a quantidade e o preço no banco de dados
             cursor.execute(
-                f"UPDATE carrinho SET {column_names[column_index]} = ?, total_price = ? WHERE id = ?",
+                f"UPDATE carrinho SET {column_names[column_index]} = ?, sale_price = ? WHERE id = ?",
                 (new_value, new_sale_price, current_values[0])
             )
             conn.commit()

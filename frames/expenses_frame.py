@@ -105,19 +105,30 @@ class ExpensesFrame(ctk.CTkFrame):
         self.sales_option = ctk.StringVar(value="Select a sale")
         self.row_strings = get_all_rows_as_strings()
 
-        if self.row_strings:
-            self.finalize_button = ctk.CTkOptionMenu(
-                self.left_frame_up,
-                values=self.row_strings,
-                variable=self.sales_option,
-                font=("Arial", 16),
-                command=self.display_sale_items
-            )
-            self.finalize_button.pack()
+        
+                # Limite de caracteres para cada item no menu
+        max_chars = 100
 
+        # Crie uma lista de valores com texto limitado
+        limited_values = [item[:max_chars] for item in self.row_strings]
+
+        if self.row_strings:
+            self.vendasid_button = ctk.CTkOptionMenu(
+            self.left_frame_up,
+            values=limited_values,  # Use os valores limitados
+            variable=self.sales_option,
+            font=("Arial", 16),
+            command=self.display_sale_items,
+            width=520,  # Largura fixa
+            height=30   # Altura fixa
+        )
+
+        # Agora, posicione o botão com place() sem passar width/height
+        self.vendasid_button.place(x=130, y=120)
         # Tabela de vendas (Treeview)
-        self.sales_table = create_sales_table(self.left_frame_down)
-        self.sales_table.pack(pady=10, padx=10, fill="both", expand=True)
+        self.sales_table = create_sales_table(self.left_frame_up)
+        self.sales_table.place(x=20, y=170, width=780, height=240)
+
 
 
 
