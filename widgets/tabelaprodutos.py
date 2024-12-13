@@ -29,3 +29,5 @@ def create_products_table(parent):
 
     # Retornando a instância da Treeview para manipulação futura
     return products_table
+
+

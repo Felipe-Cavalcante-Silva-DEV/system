@@ -5,12 +5,12 @@ from tkinter import ttk, simpledialog, messagebox
 def create_sales_table(parent):
     """Cria a tabela Treeview para o carrinho."""
     # Criando a tabela Treeview
-    sales_table = ttk.Treeview(parent, columns=("ID", "CodigoVenda", "CodigoProduto", "Produto", "Quantidade", "PreçoUnidade", "PrecoTotal"), show="headings")
+    sales_table = ttk.Treeview(parent, columns=("ID Venda", "CodigoProduto", "Produto", "Quantidade", "PreçoUnidade", "PrecoTotal"), show="headings")
     
 
     # Configurando as colunas
-    sales_table.heading("ID", text="ID")
-    sales_table.heading("CodigoVenda", text="Codigo Venda")
+
+    sales_table.heading("ID Venda", text="ID Venda")
     sales_table.heading("CodigoProduto", text="Codigo Produto")
     sales_table.heading("Produto", text="Produto")
     sales_table.heading("Quantidade", text="Quantidade")
@@ -18,9 +18,7 @@ def create_sales_table(parent):
     sales_table.heading("PrecoTotal", text="Preco Total")
 
     
-
-    sales_table.column("ID", width=5, anchor="center")
-    sales_table.column("CodigoVenda", width=10, anchor="center")
+    sales_table.column("ID Venda", width=10, anchor="center")
     sales_table.column("CodigoProduto", width=10, anchor="center")
     sales_table.column("Produto", width=90, anchor="center")
     sales_table.column("Quantidade", width=40, anchor="center")

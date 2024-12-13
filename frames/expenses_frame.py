@@ -1,10 +1,11 @@
 import customtkinter as ctk
 from tkinter import messagebox
 import sqlite3
-from basevendas import save_sale
+from tkinter import ttk
 import datetime
 from widgets.tabelavendas import create_sales_table
 from widgets.tabelaprodutos import create_products_table
+from widgets.tabelaedit import create_edit_table
 
 
 def get_all_rows_as_strings():
@@ -31,29 +32,27 @@ def get_all_rows_as_strings():
 
 
 
-
-from tkinter import ttk
-
 def get_items_for_sale(venda_id):
     try:
         conn = sqlite3.connect("sales.db")  # Conecta ao banco de dados
         cursor = conn.cursor()
         
-        # Consulta para obter os itens relacionados à venda
+        # Consulta para obter os itens relacionados à venda com o venda_id
         query = '''
-            SELECT id, venda_id, code, nome, quantidade, preco_unitario, total
+            SELECT venda_id, code, nome, quantidade, preco_unitario, total
             FROM itens_venda
             WHERE venda_id = ?
         '''
         cursor.execute(query, (venda_id,))
         items = cursor.fetchall()
         
-        return items  # Retorna os itens como uma lista de tuplas
+        return items  # Retorna os itens da venda
     except sqlite3.Error as e:
         print(f"Erro no banco de dados: {e}")
         return []
     finally:
         conn.close()  # Fecha a conexão
+
 
 
 class ExpensesFrame(ctk.CTkFrame):
@@ -104,28 +103,28 @@ class ExpensesFrame(ctk.CTkFrame):
         self.row_strings = get_all_rows_as_strings()
 
         
-        #         # Limite de caracteres para cada item no menu
-        # max_chars = 100
+                # Limite de caracteres para cada item no menu
+        max_chars = 100
 
-        # # Crie uma lista de valores com texto limitado
-        # limited_values = [item[:max_chars] for item in self.row_strings]
+        # Crie uma lista de valores com texto limitado
+        limited_values = [item[:max_chars] for item in self.row_strings]
 
-        # if self.row_strings:
+        if self.row_strings:
 
-        #     self.vendasid_button = ctk.CTkOptionMenu(self.left_frame_up,
-        #         values=limited_values,  # Use os valores limitados
-        #         variable=self.sales_option,
-        #         font=("Arial", 16),
-        #         command=self.display_sale_items,
-        #         width=520,  # Largura fixa
-        #         height=30   # Altura fixa
-        #     )
+            self.vendasid_button = ctk.CTkOptionMenu(self.left_frame_up,
+                values=limited_values,  # Use os valores limitados
+                variable=self.sales_option,
+                font=("Arial", 16),
+                command=self.display_sale_items,
+                width=520,  # Largura fixa
+                height=30   # Altura fixa
+            )
 
-        # # Agora, posicione o botão com place() sem passar width/height
-        # self.vendasid_button.place(x=25, y=125)
+        # Agora, posicione o botão com place() sem passar width/height
+        self.vendasid_button.place(x=25, y=125)
 
 
-        self.importar_button = ctk.CTkButton(self.left_frame_up, text="Importar")
+        self.importar_button = ctk.CTkButton(self.left_frame_up, text="Importar", command=self.import_products)
         self.importar_button.place(x=660, y=125)
 
         # Tabela de vendas (Treeview)
@@ -140,20 +139,35 @@ class ExpensesFrame(ctk.CTkFrame):
 
 
 
-        self.products_table = create_products_table(self.left_frame_down)
+        self.products_table = create_edit_table(self.left_frame_down)
         self.products_table.place(x=20, y=270, width=780, height=260)
+        
+        
+        
+        
 
 
 
     def display_sale_items(self, selected_sale):
-        # Extrai o ID da venda do string selecionado
+        """Exibe os itens de uma venda selecionada e armazena os códigos dos produtos."""
         venda_id = selected_sale.split("  |  ")[0]
-        if venda_id.isdigit():
-            items = get_items_for_sale(int(venda_id))
-            self.update_sales_table(items)
-        else:
-            # Limpa a tabela se a seleção for inválida
-            self.update_sales_table([])
+        if not venda_id.isdigit():
+            self.update_sales_table([])  # Limpa a tabela se a seleção for inválida
+            self.selected_product_codes = []  # Limpa os códigos de produtos
+            self.importar_button.configure(state="disabled")  # Desabilita o botão "Importar"
+            return
+
+        venda_id = int(venda_id)
+        items = get_items_for_sale(venda_id)  # Busca os itens relacionados à venda
+        self.update_sales_table(items)  # Atualiza a tabela com os itens
+
+        # Armazena os códigos dos produtos para uso futuro (importação)
+        self.selected_product_codes = [item[2] for item in items]  # Supondo que 'code' está na posição 2
+
+        # Habilita o botão "Importar"
+        self.importar_button.configure(state="normal")
+
+
             
 
     def update_sales_table(self, items):
@@ -166,3 +180,50 @@ class ExpensesFrame(ctk.CTkFrame):
         for i, item in enumerate(items):
             tag = "even" if i % 2 == 0 else "odd"  # Alterna as cores das linhas
             self.sales_table.insert("", "end", values=item, tags=(tag,))
+            
+    def import_products(self):
+        """Importa os detalhes dos produtos relacionados à venda e exibe na tabela."""
+        if not hasattr(self, 'selected_product_codes') or not self.selected_product_codes:
+            messagebox.showwarning("Aviso", "Nenhuma venda foi selecionada ou não há produtos para importar.")
+            return
+
+        try:
+            # Obtém o venda_id a partir da seleção
+            selected_sale = self.sales_option.get()  # Obtém o valor da venda selecionada no menu
+            venda_id = int(selected_sale.split("  |  ")[0])  # Extrai o ID da venda
+
+            conn = sqlite3.connect("sales.db")
+            cursor = conn.cursor()
+
+            # Consulta para recuperar os itens associados ao venda_id selecionado
+            query = '''
+                SELECT venda_id, code, nome, quantidade, preco_unitario, total
+                FROM itens_venda
+                WHERE venda_id = ?
+            '''
+            cursor.execute(query, (venda_id,))
+            items = cursor.fetchall()
+
+            # Atualiza a tabela de produtos com os resultados
+            self.update_products_table(items)
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Erro", f"Erro ao importar produtos: {e}")
+        finally:
+            conn.close()
+
+
+    def update_products_table(self, items):
+        """Atualiza a Treeview de produtos com os dados fornecidos."""
+        # Limpa os dados existentes na tabela de produtos
+        for item in self.products_table.get_children():
+            self.products_table.delete(item)
+
+        # Adiciona os novos produtos à tabela
+        for i, product in enumerate(items):
+            tag = "even" if i % 2 == 0 else "odd"
+            self.products_table.insert("", "end", values=product, tags=(tag,))
+
+
+
+    

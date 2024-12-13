@@ -9,7 +9,7 @@ from frames.admin_panel_frame import AdminPanelFrame
 from frames.shopping_cart_frame import ShoppingFrame
 from frames.expenses_frame import ExpensesFrame
 from widgets.tabelacarrinho import create_cart_table
-from widgets.tabelaprodutos import create_products_table
+
 
 class App(ctk.CTk):
     def __init__(self):

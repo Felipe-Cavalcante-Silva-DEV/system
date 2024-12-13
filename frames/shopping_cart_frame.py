@@ -9,7 +9,7 @@ from widgets.tabelaprodutos import create_products_table
 from widgets.tabelacarrinho import create_cart_table
 from widgets.search import search_product
 from basecarrinho import criar_banco
-from frames.expenses_frame import save_sale
+
 
 
 
@@ -373,7 +373,7 @@ class ShoppingFrame(ctk.CTkFrame):
         print(f"Dados da venda: {cart_items}, Total: {total_value}, Vendedor: {vendedor_selecionado}, Cliente: {cliente_selecionado}")
 
         # Chamar a função para salvar a venda
-        save_sale(cart_items, total_value, vendedor_selecionado, cliente_selecionado)
+        self.save_sale(cart_items, total_value, vendedor_selecionado, cliente_selecionado)
 
         # Limpar o carrinho após salvar a venda
         try:
@@ -385,8 +385,7 @@ class ShoppingFrame(ctk.CTkFrame):
         finally:
             conn.close()  # Sempre fecha a conexão
 
-
-    def save_sale(cart_items, total_value, vendedor_selecionado, cliente_selecionado):
+    def save_sale(self, cart_items, total_value, vendedor_selecionado, cliente_selecionado):
         """
         Salva uma venda no banco de dados, incluindo os itens do carrinho.
         """
@@ -413,21 +412,19 @@ class ShoppingFrame(ctk.CTkFrame):
 
             # Inserir os itens na tabela 'itens_venda'
             for item in cart_items:
-                code = item["code"]
-                print(f"Processando item com código: {code}")
-
-                cursor.execute("SELECT * FROM products WHERE code = ?", (code,))
-                product = cursor.fetchone()
-
-                if product:
-                    cursor.execute('''
-                        INSERT INTO itens_venda (nome, code, venda_id, quantidade, preco_unitario, total)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (item["name"], code, venda_id, item["quantity"], item["sale_price"], item["quantity"] * float(item["sale_price"])))
-                    print(f"Produto com código {code} inserido na venda.")
-                else:
-                    print(f"Produto com código {code} não encontrado na tabela products.")
-                    messagebox.showerror("Erro", f"Produto com código {code} não encontrado.")
+                print(f"Processando item: {item}")  # Verifique os valores exatos de cada item
+                cursor.execute('''
+                    INSERT INTO itens_venda (nome, code, venda_id, quantidade, preco_unitario, total)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (
+                    item["name"],          # Nome do item
+                    item["code"],          # Código correto
+                    venda_id,              # ID da venda
+                    item["quantity"],      # Quantidade
+                    item["sale_price"],    # Preço unitário
+                    item["quantity"] * float(item["sale_price"])  # Total
+                ))
+                print(f"Produto com código {item['code']} inserido na venda.")
 
             conn.commit()
             print("Venda salva com sucesso!")
@@ -439,3 +436,7 @@ class ShoppingFrame(ctk.CTkFrame):
             messagebox.showerror("Erro", f"Erro ao salvar a venda: {e}")
         finally:
             conn.close()  # Sempre fecha a conexão
+
+                    
+                    
+        
