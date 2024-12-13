@@ -3,7 +3,7 @@ import sqlite3
 # Função para criar a tabela do banco de dados
 def criar_banco():
     """Cria o banco de dados e a tabela 'carrinho', se ainda não existirem."""
-    with sqlite3.connect('carrinho.db') as conn:
+    with sqlite3.connect('sales.db') as conn:
         cursor = conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS carrinho (

@@ -61,27 +61,7 @@ class InventoryFrame(ctk.CTkFrame):
         self.products_table.tag_configure("odd", background="white")
         self.products_table.tag_configure("even", background="#f0f0f0")
         
-        self.init_database()
-
-    def init_database(self):
-        # Inicializar banco de dados
-        conn = sqlite3.connect("products.db")
-        cursor = conn.cursor()
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS products (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            code TEXT NOT NULL UNIQUE,
-            quantity INTEGER NOT NULL,
-            sale_price REAL NOT NULL,
-            purchase_price REAL NOT NULL,
-            brand TEXT NOT NULL,
-            product_type TEXT NOT NULL
-        )
-        ''')
-        conn.commit()
-        conn.close()
-
+        
     def change_cadastro_type(self, tipo):
         # Alterne entre tipos de cadastro
         for widget in self.form_frame.winfo_children():
@@ -158,7 +138,7 @@ class InventoryFrame(ctk.CTkFrame):
             return
 
         try:
-            conn = sqlite3.connect("products.db")
+            conn = sqlite3.connect("sales.db")
             cursor = conn.cursor()
 
             # Verifica se já existe um produto com o mesmo código ou nome

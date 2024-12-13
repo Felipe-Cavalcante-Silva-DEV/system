@@ -4,6 +4,7 @@ import sqlite3
 from basevendas import save_sale
 import datetime
 from widgets.tabelavendas import create_sales_table
+from widgets.tabelaprodutos import create_products_table
 
 
 def get_all_rows_as_strings():
@@ -28,10 +29,7 @@ def get_all_rows_as_strings():
     finally:
         conn.close()  # Fecha a conexão
 
-# Exemplo de uso
-row_strings = get_all_rows_as_strings()
-for row in row_strings:
-    print(row)
+
 
 
 from tkinter import ttk
@@ -43,7 +41,7 @@ def get_items_for_sale(venda_id):
         
         # Consulta para obter os itens relacionados à venda
         query = '''
-            SELECT id, venda_id, produto_id, nome, quantidade, preco_unitario, total
+            SELECT id, venda_id, code, nome, quantidade, preco_unitario, total
             FROM itens_venda
             WHERE venda_id = ?
         '''
@@ -106,31 +104,44 @@ class ExpensesFrame(ctk.CTkFrame):
         self.row_strings = get_all_rows_as_strings()
 
         
-                # Limite de caracteres para cada item no menu
-        max_chars = 100
+        #         # Limite de caracteres para cada item no menu
+        # max_chars = 100
 
-        # Crie uma lista de valores com texto limitado
-        limited_values = [item[:max_chars] for item in self.row_strings]
+        # # Crie uma lista de valores com texto limitado
+        # limited_values = [item[:max_chars] for item in self.row_strings]
 
-        if self.row_strings:
-            self.vendasid_button = ctk.CTkOptionMenu(
-            self.left_frame_up,
-            values=limited_values,  # Use os valores limitados
-            variable=self.sales_option,
-            font=("Arial", 16),
-            command=self.display_sale_items,
-            width=520,  # Largura fixa
-            height=30   # Altura fixa
-        )
+        # if self.row_strings:
 
-        # Agora, posicione o botão com place() sem passar width/height
-        self.vendasid_button.place(x=130, y=120)
+        #     self.vendasid_button = ctk.CTkOptionMenu(self.left_frame_up,
+        #         values=limited_values,  # Use os valores limitados
+        #         variable=self.sales_option,
+        #         font=("Arial", 16),
+        #         command=self.display_sale_items,
+        #         width=520,  # Largura fixa
+        #         height=30   # Altura fixa
+        #     )
+
+        # # Agora, posicione o botão com place() sem passar width/height
+        # self.vendasid_button.place(x=25, y=125)
+
+
+        self.importar_button = ctk.CTkButton(self.left_frame_up, text="Importar")
+        self.importar_button.place(x=660, y=125)
+
         # Tabela de vendas (Treeview)
         self.sales_table = create_sales_table(self.left_frame_up)
-        self.sales_table.place(x=20, y=170, width=780, height=240)
+        self.sales_table.place(x=20, y=170, width=780, height=220)
 
 
 
+
+
+
+
+
+
+        self.products_table = create_products_table(self.left_frame_down)
+        self.products_table.place(x=20, y=270, width=780, height=260)
 
 
 

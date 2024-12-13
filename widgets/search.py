@@ -12,7 +12,7 @@ def search_product(search_entry, products_table):
         return
 
     try:
-        conn = sqlite3.connect("products.db")
+        conn = sqlite3.connect("sales.db")
         cursor = conn.cursor()
 
         cursor.execute(''' 

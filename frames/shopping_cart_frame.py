@@ -183,7 +183,7 @@ class ShoppingFrame(ctk.CTkFrame):
         # Garantir que a tabela 'carrinho' exista
         criar_banco()
 
-        with sqlite3.connect('carrinho.db') as conn:
+        with sqlite3.connect('sales.db') as conn:
             cursor = conn.cursor()
 
             for item in selected_items:
@@ -245,7 +245,7 @@ class ShoppingFrame(ctk.CTkFrame):
         confirm = messagebox.askyesno("Confirmação", f"Tem certeza que deseja deletar {len(selected_items)} item(s)?")
         if confirm:
             # Conectar ao banco de dados fora do loop
-            conn = sqlite3.connect('carrinho.db')
+            conn = sqlite3.connect('sales.db')
             cursor = conn.cursor()
 
             for item_id in selected_items:
@@ -305,7 +305,7 @@ class ShoppingFrame(ctk.CTkFrame):
     def carregar_dados(self):
         """Carrega os dados do banco de dados para a Tabela do Carrinho."""
         # Conectar ao banco de dados
-        conn = sqlite3.connect("carrinho.db")
+        conn = sqlite3.connect("sales.db")
         cursor = conn.cursor()
 
         cursor.execute('SELECT * FROM carrinho')
@@ -336,90 +336,106 @@ class ShoppingFrame(ctk.CTkFrame):
             messagebox.showinfo("Resultado", "Nenhum produto encontrado.")
             
     def finalize_sale(self):
-        """
-        Finaliza a venda, salvando os dados no banco de dados.
-        """
-        # Obter itens do carrinho
-        conn = sqlite3.connect("carrinho.db")
-        cursor = conn.cursor()
+        print("Iniciando a finalização da venda...")  # Mensagem de início
 
-        cursor.execute("SELECT id, code, name, quantity, sale_price FROM carrinho")
-        cart_items = [
-            {"id": row[0], "code": row[1], "name": row[2], "quantity": row[3], "sale_price": row[4]}
-            for row in cursor.fetchall()
-        ]
-        conn.close()
+        # Conectar ao banco de dados e obter os itens do carrinho
+        try:
+            conn = sqlite3.connect("sales.db")
+            cursor = conn.cursor()
 
-        if not cart_items:
-            messagebox.showwarning("Aviso", "O carrinho está vazio. Não é possível finalizar a venda.")
+            # Recupera os itens do carrinho
+            cursor.execute("SELECT id, code, name, quantity, sale_price FROM carrinho")
+            cart_items = [
+                {"id": row[0], "code": row[1], "name": row[2], "quantity": row[3], "sale_price": row[4]}
+                for row in cursor.fetchall()
+            ]
+            print(f"Itens no carrinho: {cart_items}")  # Verificando o conteúdo do carrinho
+
+            if not cart_items:
+                messagebox.showwarning("Aviso", "O carrinho está vazio. Não é possível finalizar a venda.")
+                return
+
+        except sqlite3.Error as e:
+            print(f"Erro ao acessar o banco de dados: {e}")
             return
 
-        # Inicializa o valor total da venda
-        total_value = 0.0
-
         # Calcular o total da venda
-        for item in cart_items:
-            total_value += float(item["quantity"]) * float(str(item["sale_price"]).replace(",", "."))
+        total_value = sum(float(item["quantity"]) * float(item["sale_price"]) for item in cart_items)
         total_value = round(total_value, 2)
+        print(f"Valor total da venda: {total_value}")
 
-        # Solicitar informações do vendedor e cliente (simulação)
-        vendedor_selecionado = self.option_button.get()  # Você pode substituir isso por uma entrada de texto na interface
-        cliente_selecionado = self.cliente_button.get()   # Ou solicitar o nome do cliente no momento da venda
+        # Obter informações do vendedor e cliente
+        vendedor_selecionado = self.option_button.get()
+        cliente_selecionado = self.cliente_button.get()
 
-        # Salvar a venda
+        # Mensagem de confirmação antes de salvar
+        print("Preparando para salvar a venda...")
+        print(f"Dados da venda: {cart_items}, Total: {total_value}, Vendedor: {vendedor_selecionado}, Cliente: {cliente_selecionado}")
+
+        # Chamar a função para salvar a venda
         save_sale(cart_items, total_value, vendedor_selecionado, cliente_selecionado)
 
         # Limpar o carrinho após salvar a venda
-        conn = sqlite3.connect("carrinho.db")
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM carrinho")
-        conn.commit()
-        conn.close()
+        try:
+            cursor.execute("DELETE FROM carrinho")
+            conn.commit()
+            print("Carrinho limpo após a venda.")
+        except sqlite3.Error as e:
+            print(f"Erro ao limpar o carrinho: {e}")
+        finally:
+            conn.close()  # Sempre fecha a conexão
 
-        # Mensagem de confirmação
-        print("Carrinho limpo após a venda.")
 
-        
     def save_sale(cart_items, total_value, vendedor_selecionado, cliente_selecionado):
         """
         Salva uma venda no banco de dados, incluindo os itens do carrinho.
-
-        :param cart_items: Lista de itens no carrinho (cada item é um dicionário com dados do produto).
-        :param total_value: Valor total da venda.
-        :param vendedor: Nome do vendedor.
-        :param cliente: Nome do cliente.
         """
+        print("Iniciando o processo de salvar a venda...")  # Mensagem de início
+
         if not cart_items:
             messagebox.showwarning("Aviso", "O carrinho está vazio. Não é possível finalizar a venda.")
             return
 
         try:
             conn = sqlite3.connect("sales.db")
+            conn.execute("PRAGMA foreign_keys = ON;")
             cursor = conn.cursor()
 
             # Inserir a venda na tabela 'vendas'
             data_atual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            parcela = "1"
             cursor.execute('''
                 INSERT INTO vendas (total, vendedor, cliente, data, parcelas)
-                VALUES (?, ?, ?, ?)
-            ''', (total_value, vendedor_selecionado, cliente_selecionado, data_atual, parcela))
+                VALUES (?, ?, ?, ?, ?)
+            ''', (total_value, vendedor_selecionado, cliente_selecionado, data_atual, "1"))
 
-            venda_id = cursor.lastrowid  # Obter o ID da venda recém-criada
+            venda_id = cursor.lastrowid
+            print(f"Venda criada com ID: {venda_id}")
 
             # Inserir os itens na tabela 'itens_venda'
             for item in cart_items:
-                cursor.execute('''
-                    INSERT INTO itens_venda (venda_id, produto_id, nome, quantidade, preco_unitario)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (venda_id, item["id"], item["name"], item["quantity"], item["sale_price"]))
+                code = item["code"]
+                print(f"Processando item com código: {code}")
+
+                cursor.execute("SELECT * FROM products WHERE code = ?", (code,))
+                product = cursor.fetchone()
+
+                if product:
+                    cursor.execute('''
+                        INSERT INTO itens_venda (nome, code, venda_id, quantidade, preco_unitario, total)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (item["name"], code, venda_id, item["quantity"], item["sale_price"], item["quantity"] * float(item["sale_price"])))
+                    print(f"Produto com código {code} inserido na venda.")
+                else:
+                    print(f"Produto com código {code} não encontrado na tabela products.")
+                    messagebox.showerror("Erro", f"Produto com código {code} não encontrado.")
 
             conn.commit()
-            conn.close()
-
+            print("Venda salva com sucesso!")
             messagebox.showinfo("Sucesso", f"Venda registrada com sucesso! ID da venda: {venda_id}")
 
         except sqlite3.Error as e:
+            print(f"Erro ao salvar a venda: {e}")
+            conn.rollback()
             messagebox.showerror("Erro", f"Erro ao salvar a venda: {e}")
-                        
-                
+        finally:
+            conn.close()  # Sempre fecha a conexão

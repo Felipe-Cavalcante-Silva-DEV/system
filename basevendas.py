@@ -25,13 +25,14 @@ def initialize_sales_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS itens_venda (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            venda_id INTEGER NOT NULL,
-            produto_id INTEGER NOT NULL,
             nome TEXT NOT NULL,
+            code TEXT NOT NULL,
+            venda_id INTEGER NOT NULL,
             quantidade INTEGER NOT NULL,
             preco_unitario REAL NOT NULL,
             total REAL NOT NULL,
             FOREIGN KEY (venda_id) REFERENCES vendas(id)
+    
         )
     ''')
     
@@ -42,10 +43,23 @@ def initialize_sales_db():
             valor_parcela REAL NOT NULL,              
             cliente TEXT NOT NULL,
             data_parcela TEXT NOT NULL,
+            pagou TEXT NOT NULL,
             FOREIGN KEY (data_parcela) REFERENCES vendas(data),
             FOREIGN KEY (venda_id) REFERENCES vendas(id)
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            code TEXT NOT NULL UNIQUE,
+            quantity INTEGER NOT NULL,
+            sale_price REAL NOT NULL,
+            purchase_price REAL NOT NULL,
+            brand TEXT NOT NULL,
+            product_type TEXT NOT NULL
+        )
+        ''')
 
 
     conn.commit()
@@ -53,6 +67,7 @@ def initialize_sales_db():
 
 
 initialize_sales_db()
+
 
 def save_sale(cart_items, total_value, vendedor, cliente):
     """
@@ -83,7 +98,7 @@ def save_sale(cart_items, total_value, vendedor, cliente):
         # Inserir os itens na tabela 'itens_venda'
         for item in cart_items:
             cursor.execute('''
-                INSERT INTO itens_venda (venda_id, produto_id, nome, quantidade, preco_unitario, total)
+                INSERT INTO itens_venda (venda_id, code, nome, quantidade, preco_unitario, total)
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (venda_id, item["id"], item["name"], item["quantity"], item["sale_price"], item["quantity"] * item["sale_price"]))
 
